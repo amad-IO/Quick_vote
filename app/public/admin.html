@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickVote - Admin Panel</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(to bottom, #1a1d35 0%, #0f1123 100%);
+      min-height: 100vh;
+    }
+
+    /* Toast Notification */
+    /* Notification Card Style */
+    .toast {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      /* Move to top-right for card style */
+      transform: translateX(120%);
+      /* Slide in from right */
+      background: #1e293b;
+      /* Dark Slate */
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 100;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 350px;
+      max-width: 90vw;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #6366f1;
+      /* Default Indigo */
+    }
+
+    .toast-success::before {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .toast-error::before {
+      background: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+    }
+
+    .toast-warning::before {
+      background: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b;
+    }
+
+    /* Progress Bar (Optional nice touch) */
+    .toast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.1);
+      width: 100%;
+    }
+
+    .toast-progress-bar {
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      width: 100%;
+      transform-origin: left;
+      animation: progress 3s linear forwards;
+    }
+
+    @keyframes progress {
+      to {
+        transform: scaleX(0);
+      }
+    }
+
+    /* Checkmark Animation */
+    @keyframes checkmark {
+      0% {
+        stroke-dashoffset: 50;
+      }
+
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    .checkmark-circle {
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      animation: checkmark 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+      animation-delay: 0.2s;
+    }
+
+    .checkmark-check {
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: checkmark 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+    }
+
+    /* Card hover effect */
+    .candidate-card {
+      transition: all 0.3s ease;
+    }
+
+    .candidate-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(99, 102, 241, 0.2);
+    }
+  </style>
+</head>
+
+<body class="antialiased text-white">
+
+  <!-- Notification Card -->
+  <div id="toast" class="toast">
+    <div class="p-4 flex items-start gap-4">
+      <!-- Icon Avatar -->
+      <div id="toast-icon-bg"
+        class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-700 mt-1">
+        <div id="toast-icon-container" class="text-white">
+          <!-- Icon -->
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between mb-1">
+          <h4 id="toast-title" class="text-sm font-bold text-white tracking-wide">Notification</h4>
+          <span class="text-[10px] text-gray-500 font-medium">Now</span>
+        </div>
+        <p id="toast-message" class="text-sm text-gray-400 leading-relaxed"></p>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="toast-progress">
+      <div id="toast-progress-bar" class="toast-progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md">
+      <div class="bg-[#1a1d35] border border-gray-800 rounded-2xl p-8 sm:p-10 shadow-2xl">
+        <!-- Logo -->
+        <div class="flex justify-center mb-8">
+          <div
+            class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/50">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+              </path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Title -->
+        <h1 class="text-2xl sm:text-3xl text-white text-center mb-2 font-bold">Admin Panel</h1>
+        <p class="text-gray-400 text-center mb-8 text-sm sm:text-base">
+          Masukkan password untuk membuat voting
+        </p>
+
+        <!-- Form -->
+        <form onsubmit="handleLogin(event)" class="space-y-5">
+          <div>
+            <label class="text-white text-sm font-medium block mb-2">Password</label>
+            <div class="relative">
+              <input type="password" id="adminPassword" placeholder="Masukkan password admin"
+                class="w-full bg-[#0f1123] border border-gray-700 rounded-lg px-4 py-3 pr-12 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200"
+                required />
+              <svg class="w-5 h-5 text-gray-500 absolute right-4 top-1/2 -translate-y-1/2" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z">
+                </path>
+              </svg>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Hint: Password default adalah "admin123"</p>
+          </div>
+
+          <button type="submit"
+            class="w-full bg-indigo-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-indigo-500/50 text-white py-3 rounded-lg transition-all duration-300 transform hover:scale-[1.02] font-medium">
+            Masuk
+          </button>
+        </form>
+
+        <!-- Back to Home -->
+        <div class="text-center mt-6">
+          <a href="/"
+            class="text-gray-400 hover:text-white transition-colors text-sm flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18">
+              </path>
+            </svg>
+            Kembali ke Beranda
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="adminPanel" class="hidden min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-gray-800 sticky top-0 bg-[#1a1d35]/95 backdrop-blur-md z-40">
+      <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-4">
+          <a href="/" class="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800/50 rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18">
+              </path>
+            </svg>
+          </a>
+          <div class="flex items-center gap-2">
+            <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="text-xl font-semibold">Kelola Voting</span>
+          </div>
+        </div>
+        <button onclick="handleLogout()"
+          class="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+          </svg>
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <div class="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div class="max-w-6xl mx-auto">
+
+        <!-- Show Voting Status if exists -->
+        <div id="votingStatus" class="hidden bg-[#1f2342] border border-indigo-900/30 rounded-2xl p-6 sm:p-8 mb-8">
+          <h2 class="text-2xl font-bold mb-6">Status Voting Saat Ini</h2>
+
+          <!-- Voting Info -->
+          <div class="mb-6 pb-6 border-b border-gray-700">
+            <h3 class="text-2xl font-bold mb-2" id="currentVotingTitle">Loading...</h3>
+            <div class="flex items-center gap-4 text-sm text-gray-400">
+              <span id="candidateCount">0 kandidat</span>
+              <span>•</span>
+              <span id="votingStatusBadge" class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-gray-500 rounded-full"></span>
+                Loading...
+              </span>
+            </div>
+          </div>
+
+          <!-- Voting Link (if active) -->
+          <div id="votingLinkSection" class="hidden mb-6 p-4 bg-[#0f1123] rounded-lg border border-gray-700">
+            <div class="text-sm text-gray-400 mb-2">🔗 Link Voting:</div>
+            <div class="flex items-center gap-2">
+              <div class="flex-1 text-indigo-400 break-all text-sm" id="votingLink">
+                Loading...
+              </div>
+              <button onclick="copyVotingLink()"
+                class="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg transition text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                  </path>
+                </svg>
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <!-- Candidates Display -->
+          <div class="mb-6">
+            <label class="text-sm font-medium text-gray-400 block mb-4">Kandidat</label>
+            <div id="currentCandidatesDisplay" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Will be populated by JS -->
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap gap-3">
+            <button id="startVotingBtn" onclick="startVoting()"
+              class="hidden flex items-center gap-2 bg-indigo-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-indigo-500/50 px-6 py-3 rounded-lg transition-all duration-300 font-medium">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"></path>
+              </svg>
+              Mulai Voting
+            </button>
+            <button id="stopVotingBtn" onclick="stopVoting()"
+              class="hidden flex items-center gap-2 bg-orange-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-orange-500/50 px-6 py-3 rounded-lg transition-all duration-300 font-medium">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+              </svg>
+              Stop Voting
+            </button>
+            <button onclick="deleteVoting()"
+              class="flex items-center gap-2 bg-red-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-red-500/50 px-6 py-3 rounded-lg transition-all duration-300 font-medium">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                </path>
+              </svg>
+              Hapus Voting
+            </button>
+          </div>
+        </div>
+
+        <!-- Create New Voting Form -->
+        <div id="createVotingForm" class="bg-[#1f2342] border border-indigo-900/30 rounded-2xl p-6 sm:p-8">
+          <h2 class="text-2xl font-bold mb-6">Buat Voting Baru</h2>
+
+          <!-- Poll Title -->
+          <div class="mb-6">
+            <label class="text-sm font-medium text-gray-400 block mb-2">Judul Voting</label>
+            <input type="text" id="pollTitle" placeholder="Contoh: Pemilihan Ketua OSIS 2024"
+              class="w-full bg-[#0f1123] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200" />
+          </div>
+
+          <!-- Candidates List -->
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <label class="text-sm font-medium text-gray-400">Kandidat (<span id="candidatesCount">0</span>)</label>
+            </div>
+
+            <div id="candidatesList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <!-- Candidates will be added here -->
+            </div>
+
+            <!-- Add Candidate Button (Always visible) -->
+            <button onclick="showAddCandidateModal()"
+              class="mt-4 w-full border-2 border-dashed border-gray-700 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/20 rounded-lg p-8 flex flex-col items-center justify-center gap-4 transition-all duration-300 group">
+              <div
+                class="w-16 h-16 rounded-full bg-indigo-600/20 group-hover:bg-indigo-600/30 group-hover:scale-110 flex items-center justify-center transition-all duration-300">
+                <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+              </div>
+              <div class="text-center">
+                <div class="mb-1 font-medium">Tambah Kandidat</div>
+                <div class="text-sm text-gray-400">Klik untuk menambahkan kandidat baru</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- Save Button -->
+          <button id="saveVotingBtn" onclick="saveVoting()"
+            class="hidden w-full bg-green-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-green-500/50 py-3 rounded-lg transition-all duration-300 font-medium text-white">
+            💾 Simpan Voting
+          </button>
+          <div id="saveHint" class="text-gray-400 text-sm text-center py-2">
+            Tambahkan minimal 2 kandidat untuk menyimpan voting
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Candidate Modal -->
+  <div id="addCandidateModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-6 z-50">
+    <div class="bg-[#1a1d35] border border-gray-800 rounded-2xl p-8 max-w-md w-full">
+      <h3 class="text-2xl mb-6">Tambah Kandidat</h3>
+      <form onsubmit="addCandidate(event)" class="space-y-4">
+        <div>
+          <label class="text-sm text-gray-400 block mb-2">Icon/Emoji</label>
+          <input type="text" id="candidateIcon" placeholder="👨‍💼 atau 👩‍💼" maxlength="2"
+            class="w-full bg-[#0f1123] border border-gray-700 rounded-lg px-4 py-3 text-4xl text-center placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition" />
+        </div>
+        <div>
+          <label class="text-sm text-gray-400 block mb-2">Nama Kandidat *</label>
+          <input type="text" id="candidateName" placeholder="Nama lengkap kandidat"
+            class="w-full bg-[#0f1123] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition"
+            required autofocus />
+        </div>
+        <div>
+          <label class="text-sm text-gray-400 block mb-2">Deskripsi (Opsional)</label>
+          <textarea id="candidateDesc" placeholder="Visi misi atau deskripsi singkat"
+            class="w-full bg-[#0f1123] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition h-24 resize-none"></textarea>
+        </div>
+        <div class="flex gap-3">
+          <button type="button" onclick="closeAddCandidateModal()"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 py-3 rounded-lg transition">
+            Batal
+          </button>
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 py-3 rounded-lg transition">
+            Tambahkan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    const API_BASE = window.location.origin;
+    // Password is now handled server-side via header
+    let candidates = [];
+    let currentVoting = null;
+    let adminPassword = localStorage.getItem('adminPassword') || '';
+
+    // Show Toast
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastTitle = document.getElementById('toast-title');
+      const toastMessage = document.getElementById('toast-message');
+      const iconContainer = document.getElementById('toast-icon-container');
+      const iconBg = document.getElementById('toast-icon-bg');
+      const progressBar = document.getElementById('toast-progress-bar');
+      const duration = 3000;
+
+      // Clean message
+      const cleanMessage = message.replace('✅ ', '').replace('❌ ', '').replace('ℹ️ ', '');
+      toastMessage.textContent = cleanMessage;
+
+      // Reset classes
+      toast.className = 'toast';
+
+      // Reset animation
+      progressBar.style.animation = 'none';
+      toast.offsetHeight; /* trigger reflow */
+      progressBar.style.animation = `progress ${duration}ms linear forwards`;
+
+      if (type === 'success') {
+        toast.classList.add('toast-success');
+        toastTitle.textContent = 'Success';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/20 mt-1 border border-emerald-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+      } else if (type === 'error') {
+        toast.classList.add('toast-error');
+        toastTitle.textContent = 'Error';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500/20 mt-1 border border-red-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+      } else if (type === 'warning') {
+        toast.classList.add('toast-warning');
+        toastTitle.textContent = 'Warning';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-yellow-500/20 mt-1 border border-yellow-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"></path></svg>`;
+      }
+
+      // Show toast
+      requestAnimationFrame(() => {
+        toast.classList.add('show');
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, duration);
+    }
+
+    // Login
+    async function handleLogin(e) {
+      e.preventDefault();
+      const password = document.getElementById('adminPassword').value;
+
+      // Verify password with backend by trying to fetch status/health or just local check first?
+      // Since create/start/stop now require password header, we'll store it.
+      // Ideally we should have a /login endpoint, but for this simple app, we'll just store and try.
+
+      adminPassword = password;
+      localStorage.setItem('adminPassword', password);
+
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('adminPanel').classList.remove('hidden');
+      showToast('✅ Login berhasil!', 'success');
+      checkExistingVoting();
+    }
+
+    // Logout
+    function handleLogout() {
+      document.getElementById('adminPanel').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('adminPassword').value = '';
+    }
+
+    // Check if voting already exists
+    async function checkExistingVoting() {
+      try {
+        const response = await fetch(`${API_BASE}/api/voting/current`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.exists) {
+            currentVoting = data.voting;
+            showVotingStatus();
+          } else {
+            showCreateForm();
+          }
+        } else {
+          showCreateForm();
+        }
+      } catch (error) {
+        console.log('No existing voting or backend offline');
+        showCreateForm();
+      }
+    }
+
+    // Show Voting Status
+    function showVotingStatus() {
+      document.getElementById('votingStatus').classList.remove('hidden');
+      document.getElementById('createVotingForm').classList.add('hidden');
+
+      // Update voting info
+      document.getElementById('currentVotingTitle').textContent = currentVoting.title;
+      document.getElementById('candidateCount').textContent = `${currentVoting.candidates.length} kandidat`;
+
+      // Update status badge
+      const statusBadge = document.getElementById('votingStatusBadge');
+      if (currentVoting.is_active) {
+        statusBadge.innerHTML = `
+                    <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    <span class="text-green-400 font-semibold">Aktif</span>
+                `;
+        document.getElementById('startVotingBtn').classList.add('hidden');
+        document.getElementById('stopVotingBtn').classList.remove('hidden');
+
+        // Show voting link
+        const link = `${window.location.origin}/vote.html`;
+        document.getElementById('votingLink').textContent = link;
+        document.getElementById('votingLinkSection').classList.remove('hidden');
+      } else {
+        statusBadge.innerHTML = `
+                    <span class="w-2 h-2 bg-gray-500 rounded-full"></span>
+                    <span class="text-gray-500">Draft</span>
+                `;
+        document.getElementById('startVotingBtn').classList.remove('hidden');
+        document.getElementById('stopVotingBtn').classList.add('hidden');
+        document.getElementById('votingLinkSection').classList.add('hidden');
+      }
+
+      // Display candidates
+      const candidatesHTML = currentVoting.candidates.map(c => `
+                <div class="bg-[#0f1123] border border-gray-700 rounded-lg p-4 flex items-center gap-4">
+                    <div class="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg flex items-center justify-center text-4xl flex-shrink-0">
+                        ${c.icon || '👤'}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-indigo-400 uppercase tracking-wide mb-1">Kandidat</div>
+                        <div class="mb-1 truncate font-semibold">${c.name}</div>
+                        ${c.description ? `<div class="text-sm text-gray-400 line-clamp-1">${c.description}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+      document.getElementById('currentCandidatesDisplay').innerHTML = candidatesHTML;
+    }
+
+    // Show Create Form
+    function showCreateForm() {
+      document.getElementById('votingStatus').classList.add('hidden');
+      document.getElementById('createVotingForm').classList.remove('hidden');
+      candidates = [];
+      renderCandidates();
+    }
+
+    // Show Add Candidate Modal
+    function showAddCandidateModal() {
+      document.getElementById('addCandidateModal').classList.remove('hidden');
+      document.getElementById('candidateIcon').value = '';
+      document.getElementById('candidateName').value = '';
+      document.getElementById('candidateDesc').value = '';
+      setTimeout(() => {
+        document.getElementById('candidateName').focus();
+      }, 100);
+    }
+
+    // Close Add Candidate Modal
+    function closeAddCandidateModal() {
+      document.getElementById('addCandidateModal').classList.add('hidden');
+    }
+
+    // Add Candidate
+    function addCandidate(e) {
+      e.preventDefault();
+
+      const icon = document.getElementById('candidateIcon').value || '👤';
+      const name = document.getElementById('candidateName').value.trim();
+      const desc = document.getElementById('candidateDesc').value.trim();
+
+      if (!name) {
+        showToast('Nama kandidat harus diisi!', 'error');
+        return;
+      }
+
+      const candidate = {
+        id: Date.now().toString(),
+        icon: icon,
+        name: name,
+        description: desc
+      };
+
+      candidates.push(candidate);
+      renderCandidates();
+      closeAddCandidateModal();
+      showToast(`✅ ${name} ditambahkan!`, 'success');
+    }
+
+    // Remove Candidate
+    function removeCandidate(id) {
+      candidates = candidates.filter(c => c.id !== id);
+      renderCandidates();
+      showToast('Kandidat dihapus', 'warning');
+    }
+
+    // Render Candidates
+    function renderCandidates() {
+      const container = document.getElementById('candidatesList');
+      document.getElementById('candidatesCount').textContent = candidates.length;
+
+      if (candidates.length === 0) {
+        container.innerHTML = '';
+        document.getElementById('saveVotingBtn').classList.add('hidden');
+        document.getElementById('saveHint').classList.remove('hidden');
+        return;
+      }
+
+      const candidatesHTML = candidates.map(c => `
+                <div class="candidate-card bg-[#0f1123] border border-gray-700 rounded-lg overflow-hidden relative group">
+                    <button
+                        onclick="removeCandidate('${c.id}')"
+                        class="absolute top-2 right-2 z-10 bg-red-600 hover:bg-red-700 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <div class="w-full h-48 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-6xl">
+                        ${c.icon}
+                    </div>
+                    <div class="p-4">
+                        <div class="mb-1 font-semibold">${c.name}</div>
+                        ${c.description ? `<div class="text-sm text-gray-400 line-clamp-2">${c.description}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+      container.innerHTML = candidatesHTML;
+
+      // Show/hide save button
+      if (candidates.length >= 2) {
+        document.getElementById('saveVotingBtn').classList.remove('hidden');
+        document.getElementById('saveHint').classList.add('hidden');
+      } else {
+        document.getElementById('saveVotingBtn').classList.add('hidden');
+        document.getElementById('saveHint').classList.remove('hidden');
+      }
+    }
+
+    // Save Voting
+    async function saveVoting() {
+      const title = document.getElementById('pollTitle').value.trim();
+
+      if (!title) {
+        showToast('❌ Judul voting harus diisi!', 'error');
+        return;
+      }
+
+      if (candidates.length < 2) {
+        showToast('❌ Minimal 2 kandidat!', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/voting/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-password': adminPassword
+          },
+          body: JSON.stringify({
+            title: title,
+            candidates: candidates
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast('✅ Voting berhasil disimpan!', 'success');
+          currentVoting = data.voting;
+          showVotingStatus();
+        } else {
+          showToast(`❌ ${data.error || 'Gagal menyimpan voting'}`, 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('❌ Backend belum berjalan! Jalankan Docker containers terlebih dahulu.', 'error');
+      }
+    }
+
+    // Start Voting
+    async function startVoting() {
+      if (!currentVoting) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/voting/start`, {
+          method: 'POST',
+          headers: { 'x-admin-password': adminPassword }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          currentVoting.is_active = true;
+          showVotingStatus();
+          showToast('✅ Voting dimulai! Link sudah tersedia.', 'success');
+        } else {
+          showToast(`❌ ${data.error || 'Gagal memulai voting'}`, 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('❌ Gagal memulai voting', 'error');
+      }
+    }
+
+    // Stop Voting
+    async function stopVoting() {
+      if (!currentVoting) return;
+
+      if (!confirm('Yakin ingin menghentikan voting?')) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/voting/stop`, {
+          method: 'POST',
+          headers: { 'x-admin-password': adminPassword }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          currentVoting.is_active = false;
+          showVotingStatus();
+          showToast('✅ Voting dihentikan!', 'success');
+        } else {
+          showToast(`❌ ${data.error || 'Gagal menghentikan voting'}`, 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('❌ Gagal menghentikan voting', 'error');
+      }
+    }
+
+    // Delete Voting
+    async function deleteVoting() {
+      if (!currentVoting) return;
+
+      if (!confirm('Yakin ingin menghapus voting ini? Data tidak bisa dikembalikan!')) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/voting/delete`, {
+          method: 'DELETE',
+          headers: { 'x-admin-password': adminPassword }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast('✅ Voting berhasil dihapus!', 'success');
+          currentVoting = null;
+          candidates = [];
+          document.getElementById('pollTitle').value = '';
+          showCreateForm();
+        } else {
+          showToast(`❌ ${data.error || 'Gagal menghapus voting'}`, 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('❌ Gagal menghapus voting', 'error');
+      }
+    }
+
+    // Copy Voting Link
+    function copyVotingLink() {
+      const link = document.getElementById('votingLink').textContent;
+      navigator.clipboard.writeText(link);
+      showToast('✅ Link berhasil disalin!', 'success');
+    }
+  </script>
+
+</body>
+
+</html>

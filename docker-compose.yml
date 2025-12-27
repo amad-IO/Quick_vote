@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Redis Database
+  redis:
+    image: redis:7-alpine
+    container_name: quickvote-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - quickvote-network
+    restart: unless-stopped
+
+  # Node.js Application (scalable)
+  app:
+    build: ./app
+    environment:
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NODE_ENV=production
+    depends_on:
+      - redis
+    networks:
+      - quickvote-network
+    restart: unless-stopped
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: quickvote-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - quickvote-network
+    restart: unless-stopped
+
+networks:
+  quickvote-network:
+    driver: bridge
+
+volumes:
+  redis-data:

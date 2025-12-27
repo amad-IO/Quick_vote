@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickVote - Secure Scalable Voting System</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(to bottom, #1a1d35 0%, #0f1123 100%);
+      min-height: 100vh;
+    }
+
+    /* Smooth Scroll */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Hover Animation */
+    .feature-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-8px);
+      border-color: rgb(168, 85, 247);
+      box-shadow: 0 20px 60px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Progress Bar Animation */
+    .progress-bar {
+      transition: width 1s ease-out;
+    }
+
+    /* Pulse Animation */
+    @keyframes pulse-glow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+      }
+
+      50% {
+        box-shadow: 0 0 40px rgba(99, 102, 241, 0.8);
+      }
+    }
+
+    .pulse-glow {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    /* Notification Card Style */
+    .toast {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      /* Move to top-right for card style */
+      transform: translateX(120%);
+      /* Slide in from right */
+      background: #1e293b;
+      /* Dark Slate */
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 100;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 350px;
+      max-width: 90vw;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #6366f1;
+      /* Default Indigo */
+    }
+
+    .toast-success::before {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .toast-error::before {
+      background: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+    }
+
+    .toast-warning::before {
+      background: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b;
+    }
+
+    /* Progress Bar (Optional nice touch) */
+    .toast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.1);
+      width: 100%;
+    }
+
+    .toast-progress-bar {
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      width: 100%;
+      transform-origin: left;
+      animation: progress 3s linear forwards;
+    }
+
+    @keyframes progress {
+      to {
+        transform: scaleX(0);
+      }
+    }
+
+    /* Button Ripple Effect */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple:after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .ripple:active:after {
+      width: 300px;
+      height: 300px;
+    }
+
+    /* Step Number Hover */
+    .step-number {
+      transition: all 0.3s ease;
+    }
+
+    .step-number:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+    }
+  </style>
+</head>
+
+<body class="antialiased text-white">
+
+  <!-- Notification Card -->
+  <div id="toast" class="toast">
+    <div class="p-4 flex items-start gap-4">
+      <!-- Icon Avatar -->
+      <div id="toast-icon-bg"
+        class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-700 mt-1">
+        <div id="toast-icon-container" class="text-white">
+          <!-- Icon -->
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between mb-1">
+          <h4 id="toast-title" class="text-sm font-bold text-white tracking-wide">Notification</h4>
+          <span class="text-[10px] text-gray-500 font-medium">Now</span>
+        </div>
+        <p id="toast-message" class="text-sm text-gray-400 leading-relaxed"></p>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="toast-progress">
+      <div id="toast-progress-bar" class="toast-progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#1a1d35]/80 border-b border-gray-800/50">
+    <div class="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span class="text-xl font-semibold">QuickVote</span>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-8">
+        <a href="#features" class="text-gray-300 hover:text-white transition-colors duration-200">Features</a>
+        <a href="#how" class="text-gray-300 hover:text-white transition-colors duration-200">How It Works</a>
+        <a href="#vote" class="text-gray-300 hover:text-white transition-colors duration-200">Vote Now</a>
+      </nav>
+
+      <!-- Action Button -->
+      <div class="hidden md:flex items-center gap-4">
+        <a href="#vote"
+          class="bg-indigo-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-indigo-500/50 px-6 py-2 rounded-lg transition-all duration-300 text-white font-medium">
+          Start Voting
+        </a>
+      </div>
+
+      <!-- Mobile Menu Button -->
+      <button id="mobileMenuBtn" class="md:hidden text-white p-2 hover:bg-gray-800/50 rounded-lg transition-colors">
+        <svg id="menuIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="hidden md:hidden bg-[#1a1d35] border-t border-gray-800/50">
+      <nav class="container mx-auto px-6 py-4 flex flex-col gap-4">
+        <a href="#features" class="text-gray-300 hover:text-white transition-colors py-2">Features</a>
+        <a href="#how" class="text-gray-300 hover:text-white transition-colors py-2">How It Works</a>
+        <a href="#vote" class="text-gray-300 hover:text-white transition-colors py-2">Vote Now</a>
+        <div class="border-t border-gray-800 pt-4">
+          <a href="#vote"
+            class="block text-center bg-indigo-600 hover:bg-opacity-90 px-6 py-2 rounded-lg transition-all duration-300 text-white font-medium">
+            Start Voting
+          </a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="container mx-auto px-4 sm:px-6 py-20 sm:py-32 pt-28 sm:pt-40 text-center">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-indigo-400 mb-4 text-sm sm:text-base">
+        ✓ Built on Enterprise-Grade Security
+      </div>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+        Secure, Scalable Voting for the Modern Web
+      </h1>
+      <p class="text-base sm:text-lg md:text-xl text-gray-400 mb-12 max-w-3xl mx-auto">
+        Platform voting real-time yang handal dan scalable. Dibangun dengan Node.js, Redis, dan Docker untuk menangani
+        beban tinggi dengan performa maksimal.
+      </p>
+      <div class="flex gap-4 justify-center">
+        <a href="#vote"
+          class="bg-indigo-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-indigo-500/50 px-6 sm:px-8 py-3 sm:py-4 rounded-lg flex items-center gap-2 transition-all duration-300 transform hover:scale-105 text-white font-medium">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Cast Your Vote
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 max-w-4xl mx-auto mt-16 sm:mt-20">
+      <div
+        class="bg-[#1f2342]/30 p-4 sm:p-6 rounded-lg border border-gray-800/30 hover:border-indigo-500/50 transition-all duration-300">
+        <div class="text-2xl sm:text-3xl md:text-4xl font-bold mb-2" id="stat-votes">0</div>
+        <div class="text-gray-400 text-sm sm:text-base">Total Votes</div>
+      </div>
+      <div
+        class="bg-[#1f2342]/30 p-4 sm:p-6 rounded-lg border border-gray-800/30 hover:border-indigo-500/50 transition-all duration-300">
+        <div class="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">3-5</div>
+        <div class="text-gray-400 text-sm sm:text-base">Active Nodes</div>
+      </div>
+      <div
+        class="bg-[#1f2342]/30 p-4 sm:p-6 rounded-lg border border-gray-800/30 hover:border-indigo-500/50 transition-all duration-300">
+        <div class="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">99.9%</div>
+        <div class="text-gray-400 text-sm sm:text-base">Uptime</div>
+      </div>
+      <div
+        class="bg-[#1f2342]/30 p-4 sm:p-6 rounded-lg border border-gray-800/30 hover:border-indigo-500/50 transition-all duration-300">
+        <div class="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">&lt;50ms</div>
+        <div class="text-gray-400 text-sm sm:text-base">Response Time</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+    <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4">Why QuickVote?</h2>
+    <p class="text-center text-gray-400 mb-12 sm:mb-16 max-w-2xl mx-auto px-4">
+      Built with top-tier reliability and security. We handle the complexity so you can focus on what matters.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
+      <div class="feature-card bg-[#1f2342] border border-indigo-900/30 p-6 sm:p-8 rounded-lg cursor-pointer">
+        <div class="w-12 h-12 bg-indigo-600/20 rounded-lg flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+            </path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold mb-3">Secure & Reliable</h3>
+        <p class="text-gray-400">
+          Setiap vote dilindungi dengan validasi IP dan rate limiting. Redis persistence memastikan data tidak hilang
+          saat container restart.
+        </p>
+      </div>
+
+      <div class="feature-card bg-[#1f2342] border border-indigo-900/30 p-6 sm:p-8 rounded-lg cursor-pointer">
+        <div class="w-12 h-12 bg-indigo-600/20 rounded-lg flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold mb-3">Instant Scale</h3>
+        <p class="text-gray-400">
+          Baik 10 atau 10 juta pengguna, infrastruktur Docker kami menangani traffic secara real-time dengan Nginx load
+          balancer.
+        </p>
+      </div>
+
+      <div class="feature-card bg-[#1f2342] border border-indigo-900/30 p-6 sm:p-8 rounded-lg cursor-pointer">
+        <div class="w-12 h-12 bg-indigo-600/20 rounded-lg flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+            </path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold mb-3">Real-Time Analytics</h3>
+        <p class="text-gray-400">
+          Lacak vote secara real-time dengan Redis in-memory database. Hasil langsung terlihat dengan latency
+          sub-millisecond.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how" class="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+    <div class="text-center mb-12 sm:mb-16">
+      <div class="text-gray-500 mb-2 text-sm sm:text-base">Simple Process</div>
+      <h2 class="text-3xl sm:text-4xl font-bold">How It Works</h2>
+      <p class="text-gray-400 mt-4 max-w-2xl mx-auto">
+        Voting system yang powerful dengan interface yang sederhana. Hanya butuh beberapa klik untuk mulai voting.
+      </p>
+    </div>
+
+    <div class="max-w-3xl mx-auto space-y-12 sm:space-y-16">
+      <div class="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
+        <div
+          class="step-number w-14 h-14 sm:w-16 sm:h-16 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer">
+          <div class="text-xl sm:text-2xl font-bold">1</div>
+        </div>
+        <div>
+          <h3 class="text-xl sm:text-2xl font-semibold mb-3">Choose Your Option</h3>
+          <p class="text-gray-400">
+            Pilih salah satu dari dua pilihan yang tersedia. Setiap pilihan memiliki deskripsi yang jelas untuk membantu
+            keputusan Anda.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
+        <div
+          class="step-number w-14 h-14 sm:w-16 sm:h-16 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer">
+          <div class="text-xl sm:text-2xl font-bold">2</div>
+        </div>
+        <div>
+          <h3 class="text-xl sm:text-2xl font-semibold mb-3">Cast Your Vote</h3>
+          <p class="text-gray-400">
+            Klik tombol "Vote Sekarang" untuk mengirim vote Anda. Sistem akan otomatis mencatat dan memprosesnya secara
+            real-time.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
+        <div
+          class="step-number w-14 h-14 sm:w-16 sm:h-16 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer">
+          <div class="text-xl sm:text-2xl font-bold">3</div>
+        </div>
+        <div>
+          <h3 class="text-xl sm:text-2xl font-semibold mb-3">View Results</h3>
+          <p class="text-gray-400">
+            Lihat hasil voting secara real-time dengan progress bar yang informatif. Hasil terupdate otomatis setiap 5
+            detik.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
+        <div
+          class="step-number w-14 h-14 sm:w-16 sm:h-16 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer">
+          <div class="text-xl sm:text-2xl font-bold">4</div>
+        </div>
+        <div>
+          <h3 class="text-xl sm:text-2xl font-semibold mb-3">Monitor Performance</h3>
+          <p class="text-gray-400">
+            Lihat container mana yang menangani request Anda. Perfect untuk demonstrasi load balancing dan horizontal
+            scaling.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Voting Section -->
+  <section id="vote" class="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+    <div class="max-w-6xl mx-auto">
+
+      <!-- CTA to Voting Page -->
+      <div class="text-center mb-12">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">
+          🗳️ Live Voting System
+        </h2>
+        <p class="text-gray-400 mb-8 max-w-2xl mx-auto">
+          Lihat hasil voting secara real-time. Jika ada voting aktif, klik tombol di bawah untuk memberikan suara Anda!
+        </p>
+        <a href="/vote.html"
+          class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-opacity-90 hover:shadow-lg hover:shadow-indigo-500/50 px-8 py-4 rounded-xl transition-all duration-300 transform hover:scale-105 text-white font-bold">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+          Mulai Voting Sekarang
+        </a>
+      </div>
+
+      <!-- Results Section removed -->
+
+      <!-- Container Info (untuk demo scaling) -->
+      <div class="mt-6 bg-[#1f2342]/50 border border-indigo-900/30 rounded-2xl p-6 text-center">
+        <p class="text-gray-400 text-sm mb-2">⚙️ Request handled by:</p>
+        <p class="text-white font-mono font-semibold text-lg" id="container-info">
+          <span class="inline-block w-2 h-2 bg-yellow-400 rounded-full animate-pulse mr-2"></span>
+          Loading...
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800 mt-20">
+    <div class="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div>
+          <div class="flex items-center gap-2 mb-4">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="font-semibold">QuickVote</span>
+          </div>
+          <p class="text-gray-400 text-sm">
+            Modern voting platform for the modern web. Built with Node.js, Redis, and Docker for maximum scalability.
+          </p>
+        </div>
+        <div>
+          <div class="text-white mb-4 font-semibold text-sm">TECHNOLOGY</div>
+          <div class="space-y-2 text-gray-400 text-sm">
+            <div>Node.js + Express</div>
+            <div>Redis Database</div>
+            <div>Nginx Load Balancer</div>
+            <div>Docker Containers</div>
+          </div>
+        </div>
+        <div>
+          <div class="text-white mb-4 font-semibold text-sm">FEATURES</div>
+          <div class="space-y-2 text-gray-400 text-sm">
+            <div>Real-time Voting</div>
+            <div>Horizontal Scaling</div>
+            <div>Load Balancing</div>
+            <div>High Availability</div>
+          </div>
+        </div>
+        <div>
+          <div class="text-white mb-4 font-semibold text-sm">PROJECT</div>
+          <div class="space-y-2 text-gray-400 text-sm">
+            <div>Komputasi Awan</div>
+            <div>Tugas Besar 2025</div>
+            <div>Scalable Architecture</div>
+            <div>Docker Implementation</div>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
+        © 2025 QuickVote. Built with ❤️ for Cloud Computing Course.
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script>
+    const API_BASE = window.location.origin;
+    let hasVoted = localStorage.getItem('hasVoted') === 'true';
+
+    // Mobile Menu Toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const menuIcon = document.getElementById('menuIcon');
+
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+
+      // Toggle icon
+      if (mobileMenu.classList.contains('hidden')) {
+        menuIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>';
+      } else {
+        menuIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>';
+      }
+    });
+
+    // Close mobile menu on link click
+    document.querySelectorAll('#mobileMenu a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+        menuIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>';
+      });
+    });
+
+    // Show Toast Notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastTitle = document.getElementById('toast-title');
+      const toastMessage = document.getElementById('toast-message');
+      const iconContainer = document.getElementById('toast-icon-container');
+      const iconBg = document.getElementById('toast-icon-bg');
+      const progressBar = document.getElementById('toast-progress-bar');
+      const duration = 3000;
+
+      // Clean message
+      const cleanMessage = message.replace('✅ ', '').replace('❌ ', '').replace('⚠️ ', '').replace('ℹ️ ', '');
+      toastMessage.textContent = cleanMessage;
+
+      // Reset classes
+      toast.className = 'toast';
+
+      // Reset animation
+      progressBar.style.animation = 'none';
+      toast.offsetHeight; /* trigger reflow */
+      progressBar.style.animation = `progress ${duration}ms linear forwards`;
+
+      if (type === 'success') {
+        toast.classList.add('toast-success');
+        toastTitle.textContent = 'Success';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/20 mt-1 border border-emerald-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+      } else if (type === 'error') {
+        toast.classList.add('toast-error');
+        toastTitle.textContent = 'Error';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500/20 mt-1 border border-red-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+      } else if (type === 'warning') {
+        toast.classList.add('toast-warning');
+        toastTitle.textContent = 'Warning';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-yellow-500/20 mt-1 border border-yellow-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"></path></svg>`;
+      } else {
+        toastTitle.textContent = 'Notification';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-600 mt-1 border border-gray-500';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+      }
+
+      // Show toast
+      requestAnimationFrame(() => {
+        toast.classList.add('show');
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, duration);
+    }
+
+    // Submit Vote
+    async function submitVote(option) {
+      // Check if already voted
+      if (hasVoted) {
+        showToast('⚠️ Anda sudah melakukan voting!', 'warning');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/vote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ option })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          hasVoted = true;
+          localStorage.setItem('hasVoted', 'true');
+          showToast('✅ Vote berhasil disimpan!', 'success');
+
+          // Update results immediately
+          setTimeout(() => {
+            fetchResults();
+          }, 500);
+        } else {
+          showToast(data.error || '❌ Gagal melakukan voting', 'error');
+        }
+      } catch (error) {
+        console.error('Error voting:', error);
+        showToast('❌ Backend belum berjalan. Silakan jalankan Docker containers terlebih dahulu.', 'error');
+      }
+    }
+
+    // Fetch Results
+    async function fetchResults() {
+      try {
+        const response = await fetch(`${API_BASE}/api/votes`);
+        const data = await response.json();
+
+        if (response.ok) {
+          updateResults(data);
+        }
+      } catch (error) {
+        console.error('Error fetching results:', error);
+        // Silent fail - UI will show 0 votes
+      }
+    }
+
+    // Update Results Display
+    function updateResults(data) {
+      const option1 = data.votes?.option1 || data.option1 || 0;
+      const option2 = data.votes?.option2 || data.option2 || 0;
+      const total = option1 + option2;
+
+      const percent1 = total > 0 ? Math.round((option1 / total) * 100) : 0;
+      const percent2 = total > 0 ? Math.round((option2 / total) * 100) : 0;
+
+      // Update counts
+      document.getElementById('option1-count').textContent = option1;
+      document.getElementById('option2-count').textContent = option2;
+      document.getElementById('total-votes').textContent = total;
+      document.getElementById('stat-votes').textContent = total;
+
+      // Update percentages
+      document.getElementById('option1-percent').textContent = percent1 + '%';
+      document.getElementById('option2-percent').textContent = percent2 + '%';
+
+      // Update progress bars (with animation)
+      document.getElementById('option1-bar').style.width = percent1 + '%';
+      document.getElementById('option2-bar').style.width = percent2 + '%';
+
+      // Update container info
+      if (data.container) {
+        document.getElementById('container-info').innerHTML = `
+                    <span class="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></span>
+                    ${data.container}
+                `;
+      }
+    }
+
+    // Fetch Health (untuk container info)
+    async function fetchHealth() {
+      try {
+        const response = await fetch(`${API_BASE}/api/health`);
+        const data = await response.json();
+
+        if (data.container) {
+          document.getElementById('container-info').innerHTML = `
+                        <span class="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></span>
+                        ${data.container}
+                    `;
+        }
+      } catch (error) {
+        document.getElementById('container-info').innerHTML = `
+                    <span class="inline-block w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                    Backend Offline (Build backend dengan Docker)
+                `;
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+      // Fetch initial results
+      fetchResults();
+      fetchHealth();
+
+      // Auto-refresh every 5 seconds
+      setInterval(fetchResults, 5000);
+      setInterval(fetchHealth, 10000);
+
+      // Show voted state if already voted
+      if (hasVoted) {
+        showToast('ℹ️ Anda sudah melakukan voting sebelumnya', 'warning');
+      }
+    });
+
+    // Reset vote (for testing - Ctrl + R)
+    document.addEventListener('keydown', function (e) {
+      if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        localStorage.removeItem('hasVoted');
+        hasVoted = false;
+        showToast('✅ Vote status direset! Silakan refresh page.', 'success');
+      }
+    });
+  </script>
+
+</body>
+
+</html>

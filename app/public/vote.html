@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickVote - Live Voting</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: #0f1123;
+      min-height: 100vh;
+    }
+
+    /* Card hover effect */
+    .candidate-card {
+      transition: all 0.3s ease;
+    }
+
+    .candidate-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 60px rgba(100, 103, 242, 0.3);
+    }
+
+    /* Pulse animation */
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(1.5);
+        opacity: 0;
+      }
+    }
+
+    .pulse-ring {
+      animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* Notification Card Style */
+    .toast {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      /* Move to top-right for card style */
+      transform: translateX(120%);
+      /* Slide in from right */
+      background: #1e293b;
+      /* Dark Slate */
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 100;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 350px;
+      max-width: 90vw;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #6366f1;
+      /* Default Indigo */
+    }
+
+    .toast-success::before {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .toast-error::before {
+      background: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+    }
+
+    .toast-warning::before {
+      background: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b;
+    }
+
+    /* Progress Bar (Optional nice touch) */
+    .toast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.1);
+      width: 100%;
+    }
+
+    .toast-progress-bar {
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      width: 100%;
+      transform-origin: left;
+      animation: progress 3.5s linear forwards;
+    }
+
+    @keyframes progress {
+      to {
+        transform: scaleX(0);
+      }
+    }
+
+    /* Checkmark Animation */
+    @keyframes checkmark {
+      0% {
+        stroke-dashoffset: 50;
+      }
+
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    .checkmark-circle {
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      animation: checkmark 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+      animation-delay: 0.2s;
+    }
+
+    .checkmark-check {
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: checkmark 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+    }
+
+    /* Modal animation */
+    .modal-backdrop {
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal-content {
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body class="antialiased text-white">
+
+  <!-- Notification Card -->
+  <div id="toast" class="toast">
+    <div class="p-4 flex items-start gap-4">
+      <!-- Icon Avatar -->
+      <div id="toast-icon-bg"
+        class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-700 mt-1">
+        <div id="toast-icon-container" class="text-white">
+          <!-- Icon -->
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between mb-1">
+          <h4 id="toast-title" class="text-sm font-bold text-white tracking-wide">Notification</h4>
+          <span class="text-[10px] text-gray-500 font-medium">Now</span>
+        </div>
+        <p id="toast-message" class="text-sm text-gray-400 leading-relaxed"></p>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="toast-progress">
+      <div id="toast-progress-bar" class="toast-progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 w-full border-b border-gray-800 bg-[#101122]/80 backdrop-blur-md">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="flex items-center justify-center size-8 rounded bg-[#6467f2] text-white">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"></path>
+            </svg>
+          </div>
+          <span class="text-xl font-bold tracking-tight">QuickVote</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div
+            class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+            <span class="relative flex h-2 w-2">
+              <span class="pulse-ring absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span class="text-xs font-bold uppercase tracking-wider">LIVE</span>
+          </div>
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#191a33] border border-gray-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+              </path>
+            </svg>
+            <span class="text-xs font-semibold hidden sm:inline-block">Secure Connection</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-grow flex flex-col items-center justify-center w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Loading State -->
+    <div id="loadingState" class="flex flex-col items-center justify-center min-h-[50vh]">
+      <div class="w-16 h-16 border-4 border-[#6467f2] border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p class="text-gray-400">Loading voting...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="hidden flex flex-col items-center justify-center min-h-[50vh] text-center">
+      <svg class="w-16 h-16 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+        </path>
+      </svg>
+      <h1 class="text-3xl font-bold mb-2">Voting Tidak Tersedia</h1>
+      <p class="text-gray-400" id="errorMessage">Voting belum dimulai atau sudah selesai</p>
+      <a href="/" class="mt-6 px-6 py-3 bg-[#6467f2] hover:bg-[#5558d9] rounded-lg font-semibold transition">
+        Kembali ke Beranda
+      </a>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden w-full max-w-7xl">
+      <!-- Hero Section -->
+      <div class="w-full max-w-3xl mx-auto flex flex-col items-center text-center mb-12 border-b border-gray-800 pb-8">
+        <div
+          class="inline-flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded bg-[#6467f2]/10 text-[#6467f2] text-xs font-bold uppercase tracking-wider">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+            </path>
+          </svg>
+          Live Election
+        </div>
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4 leading-[1.1]" id="votingTitle">
+          Loading...
+        </h1>
+        <p class="text-lg text-gray-400 leading-relaxed max-w-xl mx-auto">
+          Pilih kandidat favorit Anda dan lihat hasil secara real-time. Setiap email hanya bisa vote 1 kali.
+        </p>
+      </div>
+
+      <!-- Cast Your Vote Section -->
+      <div class="w-full flex flex-col items-center mb-12">
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Cast Your Vote</h2>
+        <p class="text-md text-gray-400 leading-relaxed max-w-xl mb-8 mx-auto text-center">
+          Pilih salah satu kandidat di bawah ini untuk memberikan suara Anda.
+        </p>
+
+        <!-- Voted Message -->
+        <div id="votedMessage"
+          class="hidden w-full max-w-2xl mx-auto mb-8 p-6 bg-green-500/10 border border-green-500/30 rounded-2xl">
+          <div class="flex items-start gap-4">
+            <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <h3 class="text-lg font-bold text-green-400 mb-1">Vote Berhasil!</h3>
+              <p class="text-gray-300">Terima kasih telah berpartisipasi. Lihat hasil real-time di bawah.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Candidate Cards -->
+        <div id="candidatesContainer"
+          class="w-full flex flex-col items-center justify-center gap-6 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-8">
+          <!-- Will be populated by JS -->
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="w-full flex flex-col items-center mt-12 pt-8 border-t border-gray-800">
+        <div class="w-full max-w-md">
+          <div class="rounded-2xl bg-[#191a33] shadow-sm border border-gray-800 p-6 h-full">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h3 class="text-xl font-bold">Vote Distribution</h3>
+                <p class="text-sm text-gray-400">Real-time vote breakdown</p>
+              </div>
+            </div>
+            <div class="flex flex-col items-center justify-center gap-8 py-4">
+              <!-- Circular Chart -->
+              <div class="relative w-56 h-56 flex items-center justify-center">
+                <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 100 100" id="chartSvg">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" stroke-width="12" />
+                  <!-- Dynamic circles will be added here -->
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span class="text-3xl font-bold tracking-tight" id="totalVotesDisplay">0</span>
+                  <span class="text-xs text-gray-500 font-semibold uppercase tracking-widest mt-1">Votes</span>
+                </div>
+              </div>
+
+              <!-- Legend -->
+              <div class="w-full space-y-3" id="chartLegend">
+                <!-- Will be populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800 py-8 mt-auto">
+    <div class="container mx-auto px-6 text-center">
+      <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-sm text-gray-500">
+        <p>© 2025 QuickVote Systems. All rights reserved.</p>
+        <span class="hidden md:inline-block w-1 h-1 rounded-full bg-gray-600"></span>
+        <div class="flex gap-4">
+          <a class="hover:text-[#6467f2] transition-colors" href="#">Privacy Policy</a>
+          <a class="hover:text-[#6467f2] transition-colors" href="#">Support</a>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center justify-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+          </path>
+        </svg>
+        <span class="text-xs font-medium">Powered by Redis & Docker</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Email Modal -->
+  <div id="emailModal"
+    class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 modal-backdrop">
+    <div class="bg-[#191a33] p-6 sm:p-8 rounded-2xl max-w-md w-full border border-gray-800 modal-content">
+      <h3 class="text-2xl font-bold mb-2">Konfirmasi Vote</h3>
+      <p class="text-gray-400 mb-6">Masukkan email Anda untuk mengkonfirmasi vote</p>
+
+      <form id="voteForm" class="space-y-4">
+        <!-- Selected Candidate Display -->
+        <div class="p-4 bg-[#6467f2]/10 border border-[#6467f2]/30 rounded-lg">
+          <p class="text-sm text-gray-400 mb-1">Kandidat pilihan:</p>
+          <div class="flex items-center gap-3">
+            <span class="text-3xl" id="selectedCandidateIcon">👤</span>
+            <div>
+              <p class="font-bold text-lg" id="selectedCandidateName">Loading...</p>
+              <p class="text-sm text-gray-400" id="selectedCandidateDesc"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Email Input -->
+        <div>
+          <label class="text-sm font-medium text-gray-400 block mb-2">Email Address *</label>
+          <input type="email" id="voterEmail" placeholder="user@example.com"
+            class="w-full px-4 py-3 rounded-lg bg-[#0f1123] border border-gray-700 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#6467f2] focus:border-transparent transition"
+            required />
+          <p class="text-xs text-gray-500 mt-2">Setiap email hanya bisa vote 1 kali</p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closeEmailModal()"
+            class="flex-1 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition font-semibold">
+            Batal
+          </button>
+          <button type="submit" class="flex-1 py-3 rounded-lg bg-[#6467f2] hover:bg-[#5558d9] transition font-bold">
+            Submit Vote
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    const API_BASE = window.location.origin;
+    let currentVoting = null;
+    let selectedCandidate = null;
+    let hasVoted = localStorage.getItem('hasVoted') === 'true';
+    const colors = ['#6467f2', '#a855f7', '#d946ef', '#f97316', '#10b981'];
+
+    // Load voting data
+    async function loadVoting() {
+      try {
+        const response = await fetch(`${API_BASE}/api/voting/current`);
+        const data = await response.json();
+
+        if (response.ok && data.exists && data.voting.is_active) {
+          currentVoting = data.voting;
+          showMainContent();
+        } else {
+          showError('Voting belum dimulai atau sudah selesai');
+        }
+      } catch (error) {
+        console.error('Error loading voting:', error);
+        showError('Tidak dapat terhubung ke server. Pastikan backend sudah berjalan.');
+      }
+    }
+
+    // Show main content
+    function showMainContent() {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+
+      // Set title
+      document.getElementById('votingTitle').textContent = currentVoting.title;
+
+      // Render candidates
+      renderCandidates();
+
+      // Load and render results
+      loadResults();
+
+      // Auto-refresh results every 5 seconds
+      setInterval(loadResults, 5000);
+
+      // Show voted message if already voted
+      if (hasVoted) {
+        document.getElementById('votedMessage').classList.remove('hidden');
+      }
+    }
+
+    // Show error
+    function showError(message) {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('errorState').classList.remove('hidden');
+      document.getElementById('errorMessage').textContent = message;
+    }
+
+    // Render candidates
+    function renderCandidates() {
+      const container = document.getElementById('candidatesContainer');
+
+      const candidatesHTML = currentVoting.candidates.map((candidate, index) => `
+                <div class="candidate-card group rounded-2xl bg-[#191a33] shadow-sm hover:shadow-xl border border-gray-800 transition-all duration-300 overflow-hidden relative w-full max-w-xs mx-auto">
+                    <div class="absolute top-4 right-4 z-10">
+                        <span class="px-2.5 py-1 rounded-md bg-black/60 backdrop-blur text-xs font-bold border border-white/10">
+                            #${String(index + 1).padStart(2, '0')}
+                        </span>
+                    </div>
+                    <div class="w-full aspect-[4/3] bg-gradient-to-br ${index % 2 === 0 ? 'from-blue-500/20 to-purple-600/20' : 'from-pink-500/20 to-orange-500/20'} flex items-center justify-center text-7xl group-hover:scale-105 transition-transform duration-500">
+                        ${candidate.icon || '👤'}
+                    </div>
+                    <div class="p-6 flex flex-col grow">
+                        <div class="mb-4">
+                            <h3 class="text-xl font-bold mb-1 group-hover:text-[#6467f2] transition-colors">
+                                ${candidate.name}
+                            </h3>
+                            <p class="text-sm text-gray-400">${candidate.description || 'Kandidat pilihan'}</p>
+                        </div>
+                        <button
+                            onclick="selectCandidate('${candidate.id}')"
+                            ${hasVoted ? 'disabled' : ''}
+                            class="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-[#6467f2] hover:bg-[#5558d9] disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold transition-all active:scale-[0.98]"
+                        >
+                            <span>${hasVoted ? 'Already Voted' : 'Pilih Kandidat'}</span>
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+      container.innerHTML = candidatesHTML;
+    }
+
+    // Select candidate
+    function selectCandidate(candidateId) {
+      selectedCandidate = currentVoting.candidates.find(c => c.id === candidateId);
+
+      // Update modal content
+      document.getElementById('selectedCandidateIcon').textContent = selectedCandidate.icon || '👤';
+      document.getElementById('selectedCandidateName').textContent = selectedCandidate.name;
+      document.getElementById('selectedCandidateDesc').textContent = selectedCandidate.description || '';
+
+      // Show modal
+      document.getElementById('emailModal').classList.remove('hidden');
+      setTimeout(() => {
+        document.getElementById('voterEmail').focus();
+      }, 300);
+    }
+
+    // Close email modal
+    function closeEmailModal() {
+      document.getElementById('emailModal').classList.add('hidden');
+      document.getElementById('voterEmail').value = '';
+      selectedCandidate = null;
+    }
+
+    // Show Toast Notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastTitle = document.getElementById('toast-title');
+      const toastMessage = document.getElementById('toast-message');
+      const iconContainer = document.getElementById('toast-icon-container');
+      const iconBg = document.getElementById('toast-icon-bg');
+      const progressBar = document.getElementById('toast-progress-bar');
+
+      toastMessage.textContent = message;
+
+      // Reset classes
+      toast.className = 'toast';
+
+      // Reset animation
+      progressBar.style.animation = 'none';
+      toast.offsetHeight; /* trigger reflow */
+      progressBar.style.animation = 'progress 3.5s linear forwards';
+
+      if (type === 'success') {
+        toast.classList.add('toast-success');
+        toastTitle.textContent = 'Success';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/20 mt-1 border border-emerald-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+      } else if (type === 'error') {
+        toast.classList.add('toast-error');
+        toastTitle.textContent = 'Error';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500/20 mt-1 border border-red-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+      } else {
+        toast.classList.add('toast-warning');
+        toastTitle.textContent = 'Notification';
+        iconBg.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-yellow-500/20 mt-1 border border-yellow-500/30';
+        iconContainer.innerHTML = `<svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`;
+      }
+
+      requestAnimationFrame(() => {
+        toast.classList.add('show');
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    // Submit vote
+    document.getElementById('voteForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('voterEmail').value.trim();
+
+      if (!email || !selectedCandidate) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/vote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email,
+            candidate_id: selectedCandidate.id
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Success!
+          hasVoted = true;
+          localStorage.setItem('hasVoted', 'true');
+
+          closeEmailModal();
+
+          // Show success toast
+          showToast('Vote berhasil! Halaman akan refresh...', 'success');
+
+          // Auto refresh page after 2 seconds
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          showToast(data.error || 'Gagal melakukan voting. Silakan coba lagi.', 'error');
+        }
+      } catch (error) {
+        console.error('Error submitting vote:', error);
+        showToast('Terjadi kesalahan. Pastikan backend sudah berjalan.', 'error');
+      }
+    });
+
+    // Load results
+    async function loadResults() {
+      try {
+        const response = await fetch(`${API_BASE}/api/results`);
+        const data = await response.json();
+
+        if (response.ok) {
+          renderResults(data);
+        }
+      } catch (error) {
+        console.error('Error loading results:', error);
+      }
+    }
+
+    // Render results
+    function renderResults(data) {
+      const totalVotes = data.total_votes || 0;
+      const candidates = data.candidates || [];
+
+      // Update total votes
+      document.getElementById('totalVotesDisplay').textContent = totalVotes.toLocaleString();
+
+      // Render circular chart
+      const chartSvg = document.getElementById('chartSvg');
+
+      // Clear existing circles (except base circle)
+      while (chartSvg.children.length > 1) {
+        chartSvg.removeChild(chartSvg.lastChild);
+      }
+
+      let cumulativePercentage = 0;
+      candidates.forEach((candidate, index) => {
+        const percentage = candidate.percentage || 0;
+        const color = colors[index % colors.length];
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', '50');
+        circle.setAttribute('cy', '50');
+        circle.setAttribute('r', '40');
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', color);
+        circle.setAttribute('stroke-width', '12');
+
+        const circumference = 2 * Math.PI * 40;
+        const dashArray = (percentage / 100) * circumference;
+        const dashOffset = -(cumulativePercentage / 100) * circumference;
+
+        circle.setAttribute('stroke-dasharray', `${dashArray} ${circumference}`);
+        circle.setAttribute('stroke-dashoffset', dashOffset);
+
+        chartSvg.appendChild(circle);
+
+        cumulativePercentage += percentage;
+      });
+
+      // Render legend
+      const legend = document.getElementById('chartLegend');
+      const legendHTML = candidates.map((candidate, index) => `
+                <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full" style="background-color: ${colors[index % colors.length]}"></span>
+                        <span class="text-gray-300">${candidate.name}</span>
+                    </div>
+                    <span class="font-bold">${candidate.percentage.toFixed(1)}%</span>
+                </div>
+            `).join('');
+
+      legend.innerHTML = legendHTML;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadVoting();
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeEmailModal();
+      }
+    });
+  </script>
+
+</body>
+
+</html>
