@@ -394,16 +394,47 @@
     <div class="bg-[#1a1d35] border border-gray-800 rounded-2xl p-8 max-w-md w-full">
       <h3 class="text-2xl mb-6">Tambah Kandidat</h3>
       <form onsubmit="addCandidate(event)" class="space-y-4">
+        <!-- Photo Upload -->
         <div>
-          <label class="text-sm text-gray-400 block mb-2">Icon/Emoji</label>
-          <input type="text" id="candidateIcon" placeholder="👨‍💼 atau 👩‍💼" maxlength="2"
-            class="w-full bg-[#0f1123] border border-gray-700 rounded-lg px-4 py-3 text-4xl text-center placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition" />
+          <label class="text-sm text-gray-400 block mb-2">Foto Kandidat *</label>
+          <div class="relative">
+            <!-- Preview Area -->
+            <div id="photoPreview" class="hidden mb-3">
+              <img id="previewImage" src="" alt="Preview"
+                class="w-full h-48 object-cover rounded-lg border border-gray-700">
+              <button type="button" onclick="removePhoto()"
+                class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 rounded-full p-2 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Upload Area -->
+            <div id="uploadArea"
+              class="border-2 border-dashed border-gray-700 hover:border-indigo-500 rounded-lg p-6 text-center cursor-pointer transition-all group"
+              onclick="document.getElementById('photoInput').click()">
+              <svg class="w-12 h-12 mx-auto mb-3 text-gray-500 group-hover:text-indigo-500 transition" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+              </svg>
+              <p class="text-gray-400 mb-1">Klik untuk upload atau drag & drop</p>
+              <p class="text-xs text-gray-500">JPG, PNG, WebP (Max 2MB)</p>
+            </div>
+            <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" class="hidden"
+              onchange="handlePhotoSelect(event)">
+          </div>
+          <p id="photoError" class="hidden text-red-400 text-xs mt-2"></p>
+          <p id="photoSize" class="hidden text-gray-500 text-xs mt-2"></p>
         </div>
+
         <div>
           <label class="text-sm text-gray-400 block mb-2">Nama Kandidat *</label>
           <input type="text" id="candidateName" placeholder="Nama lengkap kandidat"
             class="w-full bg-[#0f1123] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition"
-            required autofocus />
+            required />
         </div>
         <div>
           <label class="text-sm text-gray-400 block mb-2">Deskripsi (Opsional)</label>
@@ -562,9 +593,8 @@
       // Display candidates
       const candidatesHTML = currentVoting.candidates.map(c => `
                 <div class="bg-[#0f1123] border border-gray-700 rounded-lg p-4 flex items-center gap-4">
-                    <div class="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg flex items-center justify-center text-4xl flex-shrink-0">
-                        ${c.icon || '👤'}
-                    </div>
+                    <img src="${c.photo || '/uploads/default-avatar.jpg'}" alt="${c.name}"
+                         class="w-20 h-20 rounded-lg object-cover flex-shrink-0" onerror="this.src='/uploads/default-avatar.jpg'">
                     <div class="flex-1 min-w-0">
                         <div class="text-xs text-indigo-400 uppercase tracking-wide mb-1">Kandidat</div>
                         <div class="mb-1 truncate font-semibold">${c.name}</div>
@@ -587,24 +617,119 @@
     // Show Add Candidate Modal
     function showAddCandidateModal() {
       document.getElementById('addCandidateModal').classList.remove('hidden');
-      document.getElementById('candidateIcon').value = '';
+      resetPhotoUpload();
       document.getElementById('candidateName').value = '';
       document.getElementById('candidateDesc').value = '';
-      setTimeout(() => {
-        document.getElementById('candidateName').focus();
-      }, 100);
     }
 
     // Close Add Candidate Modal
     function closeAddCandidateModal() {
       document.getElementById('addCandidateModal').classList.add('hidden');
+      resetPhotoUpload();
+    }
+
+    // Global variable to store uploaded photo path
+    let currentPhotoPath = null;
+
+    // Handle photo selection
+    function handlePhotoSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Validate file size
+      if (file.size > 2 * 1024 * 1024) {
+        showPhotoError('File terlalu besar! Maksimal 2MB.');
+        return;
+      }
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        showPhotoError('Format file tidak valid! Gunakan JPG, PNG, atau WebP.');
+        return;
+      }
+
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById('previewImage').src = e.target.result;
+        document.getElementById('photoPreview').classList.remove('hidden');
+        document.getElementById('uploadArea').classList.add('hidden');
+
+        // Show file size
+        const sizeKB = (file.size / 1024).toFixed(1);
+        showPhotoSize(`Ukuran: ${sizeKB} KB`);
+      };
+      reader.readAsDataURL(file);
+
+      // Upload to server
+      uploadPhotoToServer(file);
+    }
+
+    // Upload   photo to server
+    async function uploadPhotoToServer(file) {
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      try {
+        const response = await fetch(`${API_BASE}/api/upload/photo`, {
+          method: 'POST',
+          headers: {
+            'x-admin-password': adminPassword
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          currentPhotoPath = data.photoPath;
+          showPhotoSize(`✓ Upload berhasil (${(data.size / 1024).toFixed(1)} KB)`);
+        } else {
+          showPhotoError(data.error || 'Gagal upload foto');
+          currentPhotoPath = null;
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        showPhotoError('Gagal upload foto. Pastikan backend running.');
+        currentPhotoPath = null;
+      }
+    }
+
+    // Remove photo
+    function removePhoto() {
+      resetPhotoUpload();
+    }
+
+    // Reset photo upload
+    function resetPhotoUpload() {
+      document.getElementById('photoInput').value = '';
+      document.getElementById('previewImage').src = '';
+      document.getElementById('photoPreview').classList.add('hidden');
+      document.getElementById('uploadArea').classList.remove('hidden');
+      document.getElementById('photoError').classList.add('hidden');
+      document.getElementById('photoSize').classList.add('hidden');
+      currentPhotoPath = null;
+    }
+
+    // Show photo error
+    function showPhotoError(message) {
+      const errorEl = document.getElementById('photoError');
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
+
+    // Show photo size
+    function showPhotoSize(message) {
+      const sizeEl = document.getElementById('photoSize');
+      sizeEl.textContent = message;
+      sizeEl.classList.remove('hidden');
     }
 
     // Add Candidate
-    function addCandidate(e) {
+    async function addCandidate(e) {
       e.preventDefault();
 
-      const icon = document.getElementById('candidateIcon').value || '👤';
       const name = document.getElementById('candidateName').value.trim();
       const desc = document.getElementById('candidateDesc').value.trim();
 
@@ -613,9 +738,14 @@
         return;
       }
 
+      if (!currentPhotoPath) {
+        showToast('Foto kandidat harus diupload!', 'error');
+        return;
+      }
+
       const candidate = {
         id: Date.now().toString(),
-        icon: icon,
+        photo: currentPhotoPath,
         name: name,
         description: desc
       };
@@ -655,9 +785,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
-                    <div class="w-full h-48 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-6xl">
-                        ${c.icon}
-                    </div>
+                    <img src="${c.photo || '/uploads/default-avatar.jpg'}" alt="${c.name}"
+                         class="w-full h-48 object-cover" onerror="this.src='/uploads/default-avatar.jpg'">
                     <div class="p-4">
                         <div class="mb-1 font-semibold">${c.name}</div>
                         ${c.description ? `<div class="text-sm text-gray-400 line-clamp-2">${c.description}</div>` : ''}

@@ -3,6 +3,8 @@ const redis = require('redis');
 const cors = require('cors');
 const path = require('path');
 const os = require('os');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +14,55 @@ const REDIS_PORT = process.env.REDIS_PORT || 6379;
 // Container ID for load balancing demo
 const CONTAINER_ID = process.env.HOSTNAME || os.hostname();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+// Create uploads directory if not exists
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer configuration with security validations
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename to prevent conflicts and path traversal attacks
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    // Sanitize: only allow safe characters in filename
+    cb(null, 'candidate-' + uniqueSuffix + ext);
+  }
+});
+
+// File filter for security - only allow images
+const fileFilter = (req, file, cb) => {
+  // Allowed extensions
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  // Check file extension
+  if (!allowedExtensions.includes(ext)) {
+    return cb(new Error('Only JPG, PNG, and WebP images are allowed!'), false);
+  }
+
+  // Check MIME type
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedMimes.includes(file.mimetype)) {
+    return cb(new Error('Invalid file type!'), false);
+  }
+
+  cb(null, true);
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // Max 2MB
+    files: 1 // Only 1 file per upload
+  }
+});
 
 // Auth Middleware
 const checkAuth = (req, res, next) => {
@@ -53,6 +104,39 @@ app.get('/api/health', (req, res) => {
     container: CONTAINER_ID,
     timestamp: new Date().toISOString()
   });
+});
+
+// Upload photo endpoint (Admin only)
+app.post('/api/upload/photo', checkAuth, upload.single('photo'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Return the path relative to public directory
+    const photoPath = `/uploads/${req.file.filename}`;
+
+    res.json({
+      success: true,
+      photoPath: photoPath,
+      filename: req.file.filename,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    res.status(500).json({ error: 'Failed to upload photo' });
+  }
+});
+
+// Handle multer errors
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large! Maximum size is 2MB.' });
+    }
+    return res.status(400).json({ error: error.message });
+  }
+  next(error);
 });
 
 // Get current voting session
