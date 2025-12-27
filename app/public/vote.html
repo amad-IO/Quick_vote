@@ -608,18 +608,18 @@
 
         if (response.ok) {
           // Success!
-          hasVoted = true;
-          localStorage.setItem('hasVoted', 'true');
+          // hasVoted = true; // Don't block locally for multiple votes support
+          // localStorage.setItem('hasVoted', 'true'); // Remove persistence
 
           closeEmailModal();
 
           // Show success toast
           showToast('Vote berhasil! Halaman akan refresh...', 'success');
 
-          // Auto refresh page after 2 seconds
+          // Auto refresh page after 0.5 seconds
           setTimeout(() => {
             window.location.reload();
-          }, 2000);
+          }, 500);
         } else {
           showToast(data.error || 'Gagal melakukan voting. Silakan coba lagi.', 'error');
         }
