@@ -23,7 +23,7 @@ services:
       - REDIS_PORT=6379
       - NODE_ENV=production
     volumes:
-      - uploads-data:/usr/src/app/public/uploads
+      - uploads-data:/app/public/uploads
     depends_on:
       - redis
     networks:
