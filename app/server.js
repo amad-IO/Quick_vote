@@ -106,6 +106,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Login endpoint
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+
+  if (password === ADMIN_PASSWORD) {
+    res.json({ success: true, message: 'Login successful' });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
+});
+
 // Upload photo endpoint (Admin only)
 app.post('/api/upload/photo', checkAuth, upload.single('photo'), (req, res) => {
   try {
